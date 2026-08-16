@@ -156,9 +156,10 @@
     </template>
 
     <script>
-        // Use the LIFF ID injected by GAS, or fallback to the one in Config
-        const LIFF_ID = '<?= LIFF_ID ?>' || '2009016720-KCCaDCdH';
-        const SCRIPT_URL = "<?= ScriptApp.getService().getUrl() ?>"; // Not really available in evaluate(), we'll use a hack or google.script.run
+        // Use the LIFF ID and SCRIPT URL directly since this is hosted statically
+        const LIFF_ID = '2009016720-KCCaDCdH';
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLRd7vwI-qNqrzM0XkaBq6e2484U6nWMFr5lskp75M-OyiCwtG22QOW0itfsyqro5F7g/exec"; 
+
         let currentUserUid = null;
         let billsData = [];
         let selectedBills = new Set();
@@ -186,36 +187,25 @@
             }
         }
 
-        function fetchPendingBills(lineUid) {
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    var result = JSON.parse(response);
-                    if (result.success) {
-                        billsData = result.data;
-                        renderBills();
-                    } else {
-                        showError('เกิดข้อผิดพลาด', result.message);
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    showError('ข้อผิดพลาดการเชื่อมต่อ', error.message);
-                })
-                .doPostProxy({ action: 'getMyPendingBills', lineUid: lineUid });
-        }
-
-        // We can't actually use google.script.run with doPost directly, so we write a helper function in Main.gs 
-        // to handle google.script.run calls.
-        // Wait, google.script.run calls functions directly, we don't need doPost for client-side to server-side!
-        
-        function callBackend(action, payload, onSuccess, onError) {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                if (action === 'getMyPendingBills') {
-                    google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).serverGetMyPendingBills(payload.lineUid);
-                } else if (action === 'createBatch') {
-                    google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).serverCreateBatch(payload.lineUid, payload.recordIdList);
+        async function callBackend(action, payload, onSuccess, onError) {
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify({ action: action, ...payload })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    onSuccess(result.data);
+                } else {
+                    onError(new Error(result.message || 'Unknown error from server'));
                 }
-            } else {
-                onError(new Error("Google Script API not found."));
+            } catch (error) {
+                console.error("Backend call error:", error);
+                onError(error);
             }
         }
 
