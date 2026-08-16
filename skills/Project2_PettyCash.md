@@ -433,7 +433,12 @@ stateDiagram-v2
 | `{{create_date}}` | วันที่สร้าง batch (GMT+7) |
 | `{{total_amount}}` | SUM Net ของ batch |
 | `{{bill_count}}` | จำนวนบิลใน batch |
-| `{{bill_table_row}}` | ตาราง: วันที่ / เลขที่บิล / ผู้ขาย / ยอด Net / Project |
+
+**ส่วนของตาราง (Table):**
+ระบบรองรับการแทรกข้อมูลลงในตาราง โดยจะหาแถวในตารางที่มี `{{doc_date}}`, `{{vend_name}}`, `{{tax_docno}}`, `{{net}}`, หรือ `{{bill_table_row}}` จากนั้นจะทำการ **คัดลอกทั้งแถว (Copy formatting)** แล้วแทนที่ข้อมูลในแต่ละช่อง:
+- ผู้ใช้ต้องใส่ Placeholder เหล่านี้ลงในเซลล์ของตาราง **(แทรก > ตาราง)** เช่น `{{doc_date}}` ในช่องวันที่, `{{net}}` ในช่องยอดเงิน
+- การแยกช่องทำให้สามารถควบคุม Format (เช่น ชิดขวา, ตัวหนา, ฟอนต์) แยกกันในแต่ละคอลัมน์ได้อิสระ
+- **รูปภาพประกอบ (รูปบิล):** ไม่ต้องใส่ Placeholder ใดๆ ในเอกสาร สคริปต์จะจัดการขึ้นหน้าใหม่, พิมพ์หัวข้อ "เอกสารประกอบ (รูปบิล)", และวนลูปดึงรูปภาพทั้งหมดมาเรียงต่อกันให้ที่ด้านล่างสุดโดยอัตโนมัติ (รองรับหลายรูปลิงก์ที่คั่นด้วยเครื่องหมาย `,`)
 
 ---
 
@@ -453,6 +458,22 @@ stateDiagram-v2
 | **Google Sheet ร่วม** | `SPREADSHEET_ID` เดียวกัน — ห้ามสร้างใหม่ |
 | **ตาราง TaxData** | Project 2 อ่านแถว `req_type=2, status=pending, batch_id=empty`; เขียนกลับ col V (`pettycash_batch_id`) และ col T (`status`) |
 | **คอลัมน์ interface** | `req_type` (U) และ `pettycash_batch_id` (V) คือสัญญาระหว่าง 2 project — **ห้ามเปลี่ยนชื่อ/ลำดับ** |
-| **Drive รูปบิล** | Project 2 อ่าน URL จาก `Pic_bill` เพื่อแนบใน PDF |
+| **ชื่อคอลัมน์ Data** | การอ้างอิงคอลัมน์จาก Sheet `TaxData` อาจพบปัญหาตัวพิมพ์ใหญ่-เล็ก (เช่น `Vend_name` vs `vend_name`) Backend ต้องทำ Mapping fallback ให้ครอบคลุมทุกกรณีทั้งในส่วน UI และ PdfService เพื่อป้องกันค่า `NaN` หรือตกหล่น |
+| **Drive รูปบิล** | Project 2 อ่าน URL จาก `Pic_bill` เพื่อแนบใน PDF (รองรับ String คั่นด้วย comma สำหรับหลายรูป) |
 | **GAS Web App URL** | แนะนำ deploy เป็น Web App เดียว — ใช้ `action` ต่างกันผ่าน `doPost` router |
 | **ข้อตกลงสำคัญ** | Project 2 **ห้ามลบ/แก้ไข** แถวใน TaxData — ทำได้เฉพาะ อัปเดตค่าใน col T และ V เท่านั้น |
+
+---
+
+## 18. Lessons Learned & Fine-Tuning (อัปเดตจากการทดสอบจริง)
+
+1. **Frontend Architecture:** เนื่องจากปัญหา `iframe` ของ LINE LIFF ไม่สามารถเปิด GAS Web App ได้โดยตรง จึงต้องใช้ **สถาปัตยกรรมแยกส่วน (Decoupled)**
+   - **UI:** สร้างเป็นไฟล์ Static HTML (เช่น `index.html`) โฮสต์บน Github Pages
+   - **Backend:** เป็น GAS Web App (Deploy as "Anyone") ที่เปิดรับ HTTP `POST` Request แบบ `Content-Type: text/plain` (เพื่อหลีกเลี่ยง CORS Preflight Error)
+   - หน้า UI ใช้ `fetch()` เพื่อยิง Payload ไปยัง GAS Web App
+2. **การป้องกัน Cache ของ LIFF:** มือถือมักจะจำหน้าเว็บเก่า (Aggressive Caching) ต้องใส่ `<meta>` tag ห้ามแคชทั้ง `Cache-Control`, `Pragma`, และ `Expires` เพื่อให้ผู้ใช้ได้หน้า UI ล่าสุด
+3. **การตกแต่ง UI (Flexbox):** การทำหน้าจอที่มี Footer ปักหมุด หรือ Layout ที่ต้อง scroll ในมือถือ การใช้ CSS `padding-bottom` ธรรมดาอาจโดน Flexbox บังกลบ ควรใช้ Element `div` ว่าง (Spacer) ใส่ความสูงไว้ล่างสุดแทนเพื่อบังคับระยะห่างให้ชัวร์ที่สุด
+4. **Google Doc Table Templating:**
+   - การใช้ `appendTable(String[][])` อาจพังได้ง่ายถ้าข้อมูลข้างในมี Data type ผสม (Number, String) ต้องใช้ `String(...)` เสมอ
+   - การทำ Templating ตารางที่สวยและยืดหยุ่นที่สุด คือการดักหาคีย์เวิร์ดในตาราง แล้วใช้คำสั่ง `templateRow.copy()` และ `table.insertTableRow(index, copiedRow)` เพื่อคงรูปแบบตารางไว้ทุกประการ
+5. **Data Mapping Fallback:** ตัวแปรข้อมูลที่ดึงจาก Spreadsheet มักจะพบปัญหา Typo การใช้อักษรพิมพ์เล็ก-ใหญ่ไม่ตรงกัน (เช่น `Record_id` vs `record_id`, `Pic_bill` vs `pic_bill`) ควรสร้าง Mapped Object ตรงกลางที่ดักไว้ทุกทาง (`bill['Net'] || bill['net']`) ก่อนส่งต่อไปให้ Service อื่นๆ (โดยเฉพาะก่อนโยนเข้า PdfService) เพื่อตัดปัญหา undefined หรือ NaN แบบถอนรากถอนโคน
