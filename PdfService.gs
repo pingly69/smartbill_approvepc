@@ -28,8 +28,11 @@ function buildSettlementPdf(batchData, validBills) {
   for (var i = 0; i < tables.length; i++) {
     var tbl = tables[i];
     for (var r = 0; r < tbl.getNumRows(); r++) {
-      var row = tbl.getRow(r);
-      if (row.getText().indexOf('{{bill_table_row}}') !== -1) {
+      var text = row.getText();
+      if (text.indexOf('{{bill_table_row}}') !== -1 || 
+          text.indexOf('{{doc_date}}') !== -1 || 
+          text.indexOf('{{vend_name}}') !== -1 || 
+          text.indexOf('{{net}}') !== -1) {
         tableWithPlaceholder = tbl;
         rowIndex = r;
         break;
@@ -39,10 +42,12 @@ function buildSettlementPdf(batchData, validBills) {
   }
   
   if (tableWithPlaceholder) {
-    // Remove the placeholder row
+    // Copy the placeholder row to use as a template
+    var templateRow = tableWithPlaceholder.getRow(rowIndex).copy();
+    // Remove the original placeholder row
     tableWithPlaceholder.removeRow(rowIndex);
     
-    // Insert actual data rows
+    // Insert actual data rows by duplicating the template row
     var insertIdx = rowIndex;
     validBills.forEach(function(bill) {
       var dateStr = "";
@@ -50,15 +55,25 @@ function buildSettlementPdf(batchData, validBills) {
         try {
           dateStr = Utilities.formatDate(new Date(bill.doc_date), "Asia/Bangkok", "dd/MM/yyyy");
         } catch (e) {
-          dateStr = bill.doc_date;
+          dateStr = String(bill.doc_date);
         }
       }
-      var newRow = tableWithPlaceholder.insertTableRow(insertIdx);
-      newRow.appendTableCell(dateStr);
-      newRow.appendTableCell(bill.tax_docno ? bill.tax_docno.toString() : '');
-      newRow.appendTableCell(bill.vend_name ? bill.vend_name.toString() : '');
-      newRow.appendTableCell(parseFloat(bill.net).toFixed(2));
-      newRow.appendTableCell(bill.project ? bill.project.toString() : '');
+      
+      var newRow = templateRow.copy();
+      tableWithPlaceholder.insertTableRow(insertIdx, newRow);
+      
+      // We will replace both the old {{bill_table_row}} style and specific field tags if they use them
+      var netAmount = (bill.net && !isNaN(parseFloat(bill.net))) ? parseFloat(bill.net).toFixed(2) : '0.00';
+      
+      newRow.replaceText('{{doc_date}}', dateStr);
+      newRow.replaceText('{{tax_docno}}', String(bill.tax_docno || ''));
+      newRow.replaceText('{{vend_name}}', String(bill.vend_name || ''));
+      newRow.replaceText('{{net}}', netAmount);
+      newRow.replaceText('{{project}}', String(bill.project || ''));
+      
+      // If they just left {{bill_table_row}} in the first cell, we clear it out to make it look clean
+      newRow.replaceText('{{bill_table_row}}', '');
+      
       insertIdx++;
     });
   } else {

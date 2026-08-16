@@ -35,13 +35,13 @@ function getMyPendingBills(lineUid) {
   
   return pendingBills.map(function(bill) {
     return {
-      record_id: bill['record_id'],
-      doc_date: bill['doc_date'],
-      vend_name: bill['Vend_name'],
-      net: bill['Net'],
-      pic_bill: bill['Pic_bill'],
-      project: bill['Project'],
-      tax_docno: bill['Tax_docno']
+      record_id: bill['record_id'] || bill['Record_id'] || '',
+      doc_date: bill['doc_date'] || bill['Doc_date'] || '',
+      vend_name: bill['Vend_name'] || bill['vend_name'] || '',
+      net: bill['Net'] || bill['net'] || 0,
+      pic_bill: bill['Pic_bill'] || bill['pic_bill'] || '',
+      project: bill['Project'] || bill['project'] || '',
+      tax_docno: bill['Tax_docno'] || bill['tax_docno'] || ''
     };
   });
 }
