@@ -22,8 +22,18 @@ function createBatch(lineUid, recordIdList) {
     recordIdList.forEach(function(recordId) {
       var billRow = taxDataRows.find(function(row) { return row['record_id'] == recordId; });
       if (billRow && billRow['Line_UID'] === lineUid && billRow['req_type'] == '2' && billRow['status'] === 'pending' && (!billRow['pettycash_batch_id'] || billRow['pettycash_batch_id'] === '')) {
-        validBills.push(billRow);
-        var net = parseFloat(billRow['Net']) || 0;
+        var mappedBill = {
+          _rowIndex: billRow._rowIndex,
+          record_id: billRow['record_id'] || billRow['Record_id'] || '',
+          doc_date: billRow['doc_date'] || billRow['Doc_date'] || '',
+          vend_name: billRow['Vend_name'] || billRow['vend_name'] || '',
+          net: billRow['Net'] || billRow['net'] || 0,
+          pic_bill: billRow['Pic_bill'] || billRow['pic_bill'] || '',
+          project: billRow['Project'] || billRow['project'] || '',
+          tax_docno: billRow['Tax_docno'] || billRow['tax_docno'] || ''
+        };
+        validBills.push(mappedBill);
+        var net = parseFloat(mappedBill.net) || 0;
         totalAmount += net;
       } else {
         excludedRecords.push(recordId);
