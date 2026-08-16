@@ -99,28 +99,33 @@ function buildSettlementPdf(batchData, validBills) {
   
   validBills.forEach(function(bill) {
     if (bill.pic_bill) {
-      try {
-        var blob = getBlobFromUrlOrDrive(bill.pic_bill);
-        if (blob) {
-          var para = body.appendParagraph("");
-          var img = para.appendInlineImage(blob);
-          
-          // Resize image to fit page width (A4 width is ~595 points, margins ~72*2, so usable width is ~450)
-          var maxWidth = 450;
-          var width = img.getWidth();
-          var height = img.getHeight();
-          if (width > maxWidth) {
-            var ratio = maxWidth / width;
-            img.setWidth(maxWidth);
-            img.setHeight(height * ratio);
+      // Support multiple URLs separated by commas
+      var urls = String(bill.pic_bill).split(',').map(function(u) { return u.trim(); }).filter(function(u) { return u.length > 0; });
+      
+      urls.forEach(function(url) {
+        try {
+          var blob = getBlobFromUrlOrDrive(url);
+          if (blob) {
+            var para = body.appendParagraph("");
+            var img = para.appendInlineImage(blob);
+            
+            // Resize image to fit page width (A4 width is ~595 points, margins ~72*2, so usable width is ~450)
+            var maxWidth = 450;
+            var width = img.getWidth();
+            var height = img.getHeight();
+            if (width > maxWidth) {
+              var ratio = maxWidth / width;
+              img.setWidth(maxWidth);
+              img.setHeight(height * ratio);
+            }
+            
+            body.appendParagraph("อ้างอิง: " + (bill.vend_name || 'ไม่ระบุ') + " - " + parseFloat(bill.net).toFixed(2) + " บาท");
           }
-          
-          body.appendParagraph("อ้างอิง: " + (bill.vend_name || 'ไม่ระบุ') + " - " + parseFloat(bill.net).toFixed(2) + " บาท");
+        } catch (e) {
+          Logger.log("Failed to insert image for bill " + bill.record_id + ": " + e.message);
+          body.appendParagraph("ไม่สามารถโหลดรูปบิลได้: " + url);
         }
-      } catch (e) {
-        Logger.log("Failed to insert image for bill " + bill.record_id + ": " + e.message);
-        body.appendParagraph("ไม่สามารถโหลดรูปบิลได้: " + bill.pic_bill);
-      }
+      });
     }
   });
   
