@@ -28,6 +28,7 @@ function buildSettlementPdf(batchData, validBills) {
   for (var i = 0; i < tables.length; i++) {
     var tbl = tables[i];
     for (var r = 0; r < tbl.getNumRows(); r++) {
+      var row = tbl.getRow(r);
       var text = row.getText();
       if (text.indexOf('{{bill_table_row}}') !== -1 || 
           text.indexOf('{{doc_date}}') !== -1 || 
