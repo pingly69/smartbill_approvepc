@@ -67,11 +67,11 @@ function buildSettlementPdf(batchData, validBills) {
     var cells = [['Date', 'Doc No', 'Vendor', 'Amount', 'Project']];
     validBills.forEach(function(bill) {
       cells.push([
-        bill.doc_date, 
-        bill.tax_docno, 
-        bill.vend_name, 
+        String(bill.doc_date || ''), 
+        String(bill.tax_docno || ''), 
+        String(bill.vend_name || ''), 
         parseFloat(bill.net).toFixed(2), 
-        bill.project
+        String(bill.project || '')
       ]);
     });
     body.appendTable(cells);
