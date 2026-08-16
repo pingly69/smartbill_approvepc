@@ -1,0 +1,93 @@
+function createBatch(lineUid, recordIdList) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    throw new Error('ระบบไม่ว่าง กรุณาลองใหม่ในภายหลัง (Lock Timeout)');
+  }
+  
+  try {
+    var usersProfile = getSheetDataAsObjects(CONFIG.SHEET_USERS_PROFILE);
+    var user = usersProfile.find(function(u) { return u['line_uid'] === lineUid; });
+    if (!user || user['pettycash_control'] !== 'YES') {
+      throw new Error('Access denied');
+    }
+    
+    var taxDataSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_TAXDATA);
+    var taxDataRows = getSheetDataAsObjects(CONFIG.SHEET_TAXDATA);
+    
+    var validBills = [];
+    var excludedRecords = [];
+    var totalAmount = 0;
+    
+    // Validate each requested bill
+    recordIdList.forEach(function(recordId) {
+      var billRow = taxDataRows.find(function(row) { return row['record_id'] == recordId; });
+      if (billRow && billRow['Line_UID'] === lineUid && billRow['req_type'] == '2' && billRow['status'] === 'pending' && (!billRow['pettycash_batch_id'] || billRow['pettycash_batch_id'] === '')) {
+        validBills.push(billRow);
+        var net = parseFloat(billRow['Net']) || 0;
+        totalAmount += net;
+      } else {
+        excludedRecords.push(recordId);
+      }
+    });
+    
+    if (validBills.length === 0) {
+      throw new Error('ไม่มีรายการบิลที่สามารถทำรายการได้');
+    }
+    
+    // Generate Batch ID
+    var batchId = "'" + new Date().getTime().toString();
+    var holderName = user['Request_Name'];
+    var empNo = user['emp_no'];
+    
+    // Generate PDF
+    var batchData = {
+      batch_id: batchId,
+      holder_name: holderName,
+      emp_no: empNo,
+      total_amount: totalAmount,
+      bill_count: validBills.length
+    };
+    var pdfUrl = buildSettlementPdf(batchData, validBills);
+    
+    // Write to PettyCash_Batch
+    var batchSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_PETTYCASH_BATCH);
+    var createDatetime = new Date();
+    // Headers: batch_id, create_datetime, holder_line_uid, holder_name, record_id_list, total_amount, pdf_url, sent_email_to, sent_datetime, approve_status
+    batchSheet.appendRow([
+      batchId, 
+      createDatetime, 
+      lineUid, 
+      holderName, 
+      validBills.map(function(b) { return b['record_id']; }).join(','), 
+      totalAmount, 
+      pdfUrl, 
+      CONFIG.EMAIL_ACCOUNTING, 
+      createDatetime, 
+      'APPROVED' // Direct approve based on new flow
+    ]);
+    
+    // Update TaxData
+    // We need to find the column index for status and pettycash_batch_id
+    var taxHeaders = taxDataSheet.getRange(1, 1, 1, taxDataSheet.getLastColumn()).getValues()[0];
+    var statusColIdx = taxHeaders.indexOf('status') + 1;
+    var batchIdColIdx = taxHeaders.indexOf('pettycash_batch_id') + 1;
+    
+    validBills.forEach(function(billRow) {
+      var rowIndex = billRow._rowIndex;
+      taxDataSheet.getRange(rowIndex, statusColIdx).setValue('approved'); // Immediately approve
+      taxDataSheet.getRange(rowIndex, batchIdColIdx).setValue(batchId);
+    });
+    
+    // Send Email
+    sendAccountingEmail(holderName, totalAmount, validBills.length, pdfUrl);
+    
+    return {
+      batch_id: batchId,
+      pdf_url: pdfUrl,
+      total_amount: totalAmount,
+      excluded_records: excludedRecords
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
