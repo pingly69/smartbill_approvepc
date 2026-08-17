@@ -73,7 +73,7 @@ function createBatch(lineUid, recordIdList) {
       pdfUrl, 
       CONFIG.EMAIL_ACCOUNTING, 
       createDatetime, 
-      'APPROVED' // Direct approve based on new flow
+      'Approved' // Direct approve based on new flow
     ]);
     
     // Update TaxData
@@ -81,11 +81,17 @@ function createBatch(lineUid, recordIdList) {
     var taxHeaders = taxDataSheet.getRange(1, 1, 1, taxDataSheet.getLastColumn()).getValues()[0];
     var statusColIdx = taxHeaders.indexOf('status') + 1;
     var batchIdColIdx = taxHeaders.indexOf('pettycash_batch_id') + 1;
+    var approveUserIdColIdx = taxHeaders.indexOf('approve_userid') + 1;
+    var approveDatetimeColIdx = taxHeaders.indexOf('approve_datetime') + 1;
+    
+    var currentDateTime = new Date();
     
     validBills.forEach(function(billRow) {
       var rowIndex = billRow._rowIndex;
-      taxDataSheet.getRange(rowIndex, statusColIdx).setValue('approved'); // Immediately approve
-      taxDataSheet.getRange(rowIndex, batchIdColIdx).setValue(batchId);
+      if (statusColIdx > 0) taxDataSheet.getRange(rowIndex, statusColIdx).setValue('Approved'); // Immediately approve
+      if (batchIdColIdx > 0) taxDataSheet.getRange(rowIndex, batchIdColIdx).setValue(batchId);
+      if (approveUserIdColIdx > 0) taxDataSheet.getRange(rowIndex, approveUserIdColIdx).setValue(lineUid);
+      if (approveDatetimeColIdx > 0) taxDataSheet.getRange(rowIndex, approveDatetimeColIdx).setValue(currentDateTime);
     });
     
     // Send Email
