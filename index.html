@@ -124,7 +124,7 @@
         <div id="processingOverlay" class="hidden absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
             <div class="loader ease-linear rounded-full border-4 border-t-4 border-brand-500 h-16 w-16 mb-6"></div>
             <h3 class="text-xl font-bold text-slate-800">กำลังประมวลผล</h3>
-            <p class="text-slate-500 mt-2 text-center px-8">กำลังสร้าง PDF และส่งข้อมูลไปยังแผนกบัญชี<br>กรุณารอสักครู่...</p>
+            <p class="text-slate-500 mt-2 text-center px-8">ส่งหาผู้อนุมัติวงเงินสดย่อย<br>กรุณารอสักครู่...</p>
         </div>
         
         <!-- Success Overlay -->
@@ -133,7 +133,7 @@
                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
             </div>
             <h3 class="text-2xl font-bold mb-2">ส่งอนุมัติสำเร็จ!</h3>
-            <p class="text-brand-100 text-center px-8 mb-8">เราได้จัดส่งเอกสารให้บัญชีเรียบร้อยแล้ว<br>กำลังปิดหน้าต่าง...</p>
+            <p class="text-brand-100 text-center px-8 mb-8">เราได้จัดส่งรายการให้ผู้อนุมัติเรียบร้อยแล้ว<br>กำลังปิดหน้าต่าง...</p>
         </div>
 
     </div>
@@ -320,7 +320,7 @@
                     if (liff.isInClient()) {
                         liff.sendMessages([{
                             type: 'text',
-                            text: `จัดทำสรุปวงเงินสดย่อยสำเร็จ!\nยอดรวม: ฿${result.total_amount.toLocaleString('th-TH', {minimumFractionDigits: 2})}\nเอกสาร: ${result.pdf_url}`
+                            text: `ส่งขออนุมัติสำเร็จ!\nยอดรวม: ฿${result.total_amount.toLocaleString('th-TH', {minimumFractionDigits: 2})}\nกรุณารอผู้อนุมัติทำรายการต่อไป`
                         }]).then(() => {
                             setTimeout(() => { liff.closeWindow(); }, 2000);
                         }).catch(err => {
@@ -358,16 +358,20 @@
             hideActionBar();
         }
 
+        let actionTimeout = null;
+
         function showActionBar() {
             const bar = document.getElementById('actionBar');
+            if(actionTimeout) clearTimeout(actionTimeout);
             bar.classList.remove('hidden');
-            setTimeout(() => { bar.classList.remove('translate-y-full'); }, 50);
+            actionTimeout = setTimeout(() => { bar.classList.remove('translate-y-full'); }, 50);
         }
 
         function hideActionBar() {
             const bar = document.getElementById('actionBar');
+            if(actionTimeout) clearTimeout(actionTimeout);
             bar.classList.add('translate-y-full');
-            setTimeout(() => { bar.classList.add('hidden'); }, 300);
+            actionTimeout = setTimeout(() => { bar.classList.add('hidden'); }, 300);
         }
 
         // Boot

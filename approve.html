@@ -361,16 +361,20 @@
             showState('error');
         }
 
+        let actionTimeout = null;
+
         function showActionBar() {
             const bar = document.getElementById('actionBar');
+            if(actionTimeout) clearTimeout(actionTimeout);
             bar.classList.remove('hidden');
-            setTimeout(() => { bar.classList.remove('translate-y-full'); }, 50);
+            actionTimeout = setTimeout(() => { bar.classList.remove('translate-y-full'); }, 50);
         }
 
         function hideActionBar() {
             const bar = document.getElementById('actionBar');
+            if(actionTimeout) clearTimeout(actionTimeout);
             bar.classList.add('translate-y-full');
-            setTimeout(() => { bar.classList.add('hidden'); }, 300);
+            actionTimeout = setTimeout(() => { bar.classList.add('hidden'); }, 300);
         }
 
         document.addEventListener('DOMContentLoaded', initializeApp);
