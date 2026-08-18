@@ -78,6 +78,7 @@ function buildSettlementPdf(batchData, validBills) {
       newRow.replaceText('{{vend_name}}', String(bill.vend_name || ''));
       newRow.replaceText('{{net}}', netAmount);
       newRow.replaceText('{{project}}', String(bill.project || ''));
+      newRow.replaceText('{{Remark}}', String(bill.remark || ''));
       
       // If they just left {{bill_table_row}} in the first cell, we clear it out to make it look clean
       newRow.replaceText('{{bill_table_row}}', '');
