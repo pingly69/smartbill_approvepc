@@ -86,7 +86,8 @@ function approveBatchAction(lineUid, batchId, displayName) {
       emp_no: '', // Not strictly needed for PDF if not available, or could fetch from users_profile
       total_amount: parseFloat(batchRowData['total_amount']),
       bill_count: validBills.length,
-      approve_datetime: currentDatetime
+      approve_datetime: currentDatetime,
+      pc_limit: parseFloat(batchRowData['pc.limit'] || batchRowData['Pc.limit'] || batchRowData['PC.limit'] || 0)
     };
     
     // Generate PDF

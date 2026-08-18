@@ -48,13 +48,14 @@ function createBatch(lineUid, recordIdList) {
     var batchId = "'" + new Date().getTime().toString();
     var holderName = user['Request_Name'];
     var empNo = user['emp_no'];
+    var pcLimit = user['pc.limit'] || user['Pc.limit'] || user['PC.limit'] || 0;
     
     // Generate PDF (Moved to approval step)
     
     // Write to PettyCash_Batch
     var batchSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_PETTYCASH_BATCH);
     var createDatetime = new Date();
-    // Headers: batch_id, create_datetime, holder_line_uid, holder_name, record_id_list, total_amount, pdf_url, sent_email_to, sent_datetime, approve_status, Approver_name, Approve_Datetime
+    // Headers: batch_id, create_datetime, holder_line_uid, holder_name, record_id_list, total_amount, pdf_url, sent_email_to, sent_datetime, approve_status, Approver_name, Approve_Datetime, pc.limit
     batchSheet.appendRow([
       batchId, 
       createDatetime, 
@@ -67,7 +68,8 @@ function createBatch(lineUid, recordIdList) {
       '', // sent_datetime
       'pending', // Waiting for approver
       '', // Approver_name
-      ''  // Approve_Datetime
+      '', // Approve_Datetime
+      pcLimit // pc.limit (Column M)
     ]);
     
     // Update TaxData

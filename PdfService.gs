@@ -20,6 +20,11 @@ function buildSettlementPdf(batchData, validBills) {
   body.replaceText('{{total_amount}}', batchData.total_amount.toFixed(2));
   body.replaceText('{{bill_count}}', batchData.bill_count.toString());
   
+  var pcLimit = batchData.pc_limit || 0;
+  var balAmount = pcLimit - batchData.total_amount;
+  body.replaceText('{{pc.limit}}', pcLimit.toFixed(2));
+  body.replaceText('{{bal_amount}}', balAmount.toFixed(2));
+  
   if (batchData.approve_datetime) {
     var approveDateStr = Utilities.formatDate(new Date(batchData.approve_datetime), "Asia/Bangkok", "dd/MM/yyyy HH:mm");
     body.replaceText('{{Approve_Datetime}}', approveDateStr);
