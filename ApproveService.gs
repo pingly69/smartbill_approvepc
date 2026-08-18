@@ -3,8 +3,8 @@ function checkApproverAccess(lineUid) {
   // Column A: Approve_request (Approve_request in header maybe?), Column C: Line_uid
   // The user says "ตรวจสอบ sheet Approve_Users colum Approve_request (colum A) ให้หา คำว่า "เงินสดย่อยรอตัด" ตรวจสอบ column C (Line_uid)"
   var approver = approveUsers.find(function(u) {
-    var reqStr = u['Approve_request'] || u['approve_request'] || '';
-    var uidStr = u['Line_uid'] || u['line_uid'] || '';
+    var reqStr = String(u['Approve_request'] || u['approve_request'] || '').trim();
+    var uidStr = String(u['Line_uid'] || u['line_uid'] || '').trim();
     return reqStr === 'เงินสดย่อยรอตัด' && uidStr === lineUid;
   });
   
