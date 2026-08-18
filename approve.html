@@ -325,14 +325,31 @@
                 const data = await callBackend(actionName, { lineUid: currentUserUid, batchId: currentBatchId });
                 document.getElementById('processingOverlay').classList.add('hidden');
                 
+                const batch = batchesData.find(b => String(b.batch_id) === String(currentBatchId));
+                let totalAmount = batch ? parseFloat(batch.total_amount) : 0;
+                
                 const msg = document.getElementById('successMessage');
+                let liffText = '';
+
                 if (actionName === 'approveBatchAction') {
                     msg.innerHTML = `รายการได้รับการอนุมัติเรียบร้อยแล้ว<br>PDF ถูกสร้างและส่งอีเมลแจ้งบัญชีแล้ว`;
+                    liffText = `อนุมัติวงเงินสดย่อยสำเร็จ!\nผู้ขอเบิก: ${batch.holder_name}\nยอดรวม: ฿${totalAmount.toLocaleString('th-TH', {minimumFractionDigits: 2})}\nเอกสาร PDF: ${data.pdf_url}`;
                 } else {
                     document.getElementById('successOverlay').classList.replace('bg-green-600', 'bg-slate-700');
                     msg.innerHTML = `รายการถูกตีกลับเรียบร้อยแล้ว`;
+                    liffText = `ตีกลับรายการวงเงินสดย่อยแล้ว!\nผู้ขอเบิก: ${batch.holder_name}\nยอดรวม: ฿${totalAmount.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
                 }
+                
                 document.getElementById('successOverlay').classList.remove('hidden');
+
+                if (liff.isInClient()) {
+                    liff.sendMessages([{ type: 'text', text: liffText }])
+                        .then(() => setTimeout(() => liff.closeWindow(), 3000))
+                        .catch(err => {
+                            console.error('Send message error', err);
+                            setTimeout(() => liff.closeWindow(), 3000);
+                        });
+                }
             } catch (error) {
                 document.getElementById('processingOverlay').classList.add('hidden');
                 alert('ข้อผิดพลาด: ' + error.message);
