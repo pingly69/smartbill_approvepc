@@ -96,12 +96,14 @@ function approveBatchAction(lineUid, batchId) {
     var headers = batchSheet.getRange(1, 1, 1, batchSheet.getLastColumn()).getValues()[0];
     var rowIndex = batchRowData._rowIndex;
     
-    var colStatus = headers.indexOf('approve_status') + 1;
-    var colApproverName = headers.indexOf('Approver_name') + 1;
-    var colApproveDatetime = headers.indexOf('Approve_Datetime') + 1;
-    var colPdfUrl = headers.indexOf('pdf_url') + 1;
-    var colSentEmail = headers.indexOf('sent_email_to') + 1;
-    var colSentDatetime = headers.indexOf('sent_datetime') + 1;
+    var lowerHeaders = headers.map(function(h) { return String(h).toLowerCase().trim(); });
+    
+    var colStatus = lowerHeaders.indexOf('approve_status') + 1;
+    var colApproverName = lowerHeaders.indexOf('approver_name') + 1;
+    var colApproveDatetime = lowerHeaders.indexOf('approve_datetime') + 1;
+    var colPdfUrl = lowerHeaders.indexOf('pdf_url') + 1;
+    var colSentEmail = lowerHeaders.indexOf('sent_email_to') + 1;
+    var colSentDatetime = lowerHeaders.indexOf('sent_datetime') + 1;
     
     if (colStatus > 0) batchSheet.getRange(rowIndex, colStatus).setValue('Approved');
     if (colApproverName > 0) batchSheet.getRange(rowIndex, colApproverName).setValue(approverName);
@@ -109,6 +111,27 @@ function approveBatchAction(lineUid, batchId) {
     if (colPdfUrl > 0) batchSheet.getRange(rowIndex, colPdfUrl).setValue(pdfUrl);
     if (colSentEmail > 0) batchSheet.getRange(rowIndex, colSentEmail).setValue(CONFIG.EMAIL_ACCOUNTING);
     if (colSentDatetime > 0) batchSheet.getRange(rowIndex, colSentDatetime).setValue(currentDatetime);
+    
+    // Update TaxData
+    var taxDataSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_TAXDATA);
+    var taxDataRows = getSheetDataAsObjects(CONFIG.SHEET_TAXDATA);
+    var taxHeaders = taxDataSheet.getRange(1, 1, 1, taxDataSheet.getLastColumn()).getValues()[0];
+    var lowerTaxHeaders = taxHeaders.map(function(h) { return String(h).toLowerCase().trim(); });
+    
+    var taxStatusColIdx = lowerTaxHeaders.indexOf('status') + 1;
+    var taxApproveUserIdColIdx = lowerTaxHeaders.indexOf('approve_userid') + 1;
+    var taxApproveDatetimeColIdx = lowerTaxHeaders.indexOf('approve_datetime') + 1;
+    
+    var taxBillsToUpdate = taxDataRows.filter(function(row) {
+      return String(row['pettycash_batch_id']) === String(batchId);
+    });
+    
+    taxBillsToUpdate.forEach(function(billRow) {
+      var rIdx = billRow._rowIndex;
+      if (taxStatusColIdx > 0) taxDataSheet.getRange(rIdx, taxStatusColIdx).setValue('Approved');
+      if (taxApproveUserIdColIdx > 0) taxDataSheet.getRange(rIdx, taxApproveUserIdColIdx).setValue(lineUid);
+      if (taxApproveDatetimeColIdx > 0) taxDataSheet.getRange(rIdx, taxApproveDatetimeColIdx).setValue(currentDatetime);
+    });
     
     // Send Email
     sendAccountingEmail(batchRowData['holder_name'], parseFloat(batchRowData['total_amount']), validBills.length, pdfUrl);
@@ -138,18 +161,20 @@ function rejectBatchAction(lineUid, batchId) {
     
     // Update PettyCash_Batch status to Rejected
     var batchHeaders = batchSheet.getRange(1, 1, 1, batchSheet.getLastColumn()).getValues()[0];
-    var batchStatusCol = batchHeaders.indexOf('approve_status') + 1;
+    var lowerBatchHeaders = batchHeaders.map(function(h) { return String(h).toLowerCase().trim(); });
+    var batchStatusCol = lowerBatchHeaders.indexOf('approve_status') + 1;
     if (batchStatusCol > 0) batchSheet.getRange(batchRowData._rowIndex, batchStatusCol).setValue('Rejected');
     
     // Revert bills in TaxData back to pending
     var taxDataSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_TAXDATA);
     var taxDataRows = getSheetDataAsObjects(CONFIG.SHEET_TAXDATA);
     var taxHeaders = taxDataSheet.getRange(1, 1, 1, taxDataSheet.getLastColumn()).getValues()[0];
+    var lowerTaxHeaders = taxHeaders.map(function(h) { return String(h).toLowerCase().trim(); });
     
-    var statusColIdx = taxHeaders.indexOf('status') + 1;
-    var batchIdColIdx = taxHeaders.indexOf('pettycash_batch_id') + 1;
-    var approveUserIdColIdx = taxHeaders.indexOf('approve_userid') + 1;
-    var approveDatetimeColIdx = taxHeaders.indexOf('approve_datetime') + 1;
+    var statusColIdx = lowerTaxHeaders.indexOf('status') + 1;
+    var batchIdColIdx = lowerTaxHeaders.indexOf('pettycash_batch_id') + 1;
+    var approveUserIdColIdx = lowerTaxHeaders.indexOf('approve_userid') + 1;
+    var approveDatetimeColIdx = lowerTaxHeaders.indexOf('approve_datetime') + 1;
     
     var validBills = taxDataRows.filter(function(row) {
       return String(row['pettycash_batch_id']) === String(batchId);

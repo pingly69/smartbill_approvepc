@@ -133,7 +133,7 @@
             </div>
             <h3 class="text-2xl font-bold mb-2">ดำเนินการสำเร็จ!</h3>
             <p class="text-green-100 text-center px-8 mb-8" id="successMessage"></p>
-            <button onclick="window.location.reload()" class="px-6 py-2 bg-white text-green-600 rounded-full font-bold shadow-lg">กลับสู่หน้าแรก</button>
+            <button onclick="closeOrReload()" class="px-6 py-2 bg-white text-green-600 rounded-full font-bold shadow-lg">ปิดหน้าต่าง</button>
         </div>
     </div>
 
@@ -325,31 +325,14 @@
                 const data = await callBackend(actionName, { lineUid: currentUserUid, batchId: currentBatchId });
                 document.getElementById('processingOverlay').classList.add('hidden');
                 
-                const batch = batchesData.find(b => String(b.batch_id) === String(currentBatchId));
-                let totalAmount = batch ? parseFloat(batch.total_amount) : 0;
-                
                 const msg = document.getElementById('successMessage');
-                let liffText = '';
-
                 if (actionName === 'approveBatchAction') {
                     msg.innerHTML = `รายการได้รับการอนุมัติเรียบร้อยแล้ว<br>PDF ถูกสร้างและส่งอีเมลแจ้งบัญชีแล้ว`;
-                    liffText = `อนุมัติวงเงินสดย่อยสำเร็จ!\nผู้ขอเบิก: ${batch.holder_name}\nยอดรวม: ฿${totalAmount.toLocaleString('th-TH', {minimumFractionDigits: 2})}\nเอกสาร PDF: ${data.pdf_url}`;
                 } else {
                     document.getElementById('successOverlay').classList.replace('bg-green-600', 'bg-slate-700');
                     msg.innerHTML = `รายการถูกตีกลับเรียบร้อยแล้ว`;
-                    liffText = `ตีกลับรายการวงเงินสดย่อยแล้ว!\nผู้ขอเบิก: ${batch.holder_name}\nยอดรวม: ฿${totalAmount.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
                 }
-                
                 document.getElementById('successOverlay').classList.remove('hidden');
-
-                if (liff.isInClient()) {
-                    liff.sendMessages([{ type: 'text', text: liffText }])
-                        .then(() => setTimeout(() => liff.closeWindow(), 3000))
-                        .catch(err => {
-                            console.error('Send message error', err);
-                            setTimeout(() => liff.closeWindow(), 3000);
-                        });
-                }
             } catch (error) {
                 document.getElementById('processingOverlay').classList.add('hidden');
                 alert('ข้อผิดพลาด: ' + error.message);
@@ -380,6 +363,14 @@
             document.getElementById('errorTitle').textContent = title;
             document.getElementById('errorMessage').textContent = message;
             showState('error');
+        }
+        
+        function closeOrReload() {
+            if (typeof liff !== 'undefined' && liff.isInClient()) {
+                liff.closeWindow();
+            } else {
+                window.location.reload();
+            }
         }
 
         let actionTimeout = null;
