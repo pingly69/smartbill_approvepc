@@ -17,13 +17,13 @@ function buildSettlementPdf(batchData, validBills) {
   body.replaceText('{{emp_no}}', batchData.emp_no);
   body.replaceText('{{batch_id}}', batchData.batch_id.replace("'", ""));
   body.replaceText('{{create_date}}', createDateStr);
-  body.replaceText('{{total_amount}}', batchData.total_amount.toFixed(2));
+  body.replaceText('{{total_amount}}', formatCurrency(batchData.total_amount));
   body.replaceText('{{bill_count}}', batchData.bill_count.toString());
   
   var pcLimit = batchData.pc_limit || 0;
   var balAmount = pcLimit - batchData.total_amount;
-  body.replaceText('{{pc.limit}}', pcLimit.toFixed(2));
-  body.replaceText('{{bal_amount}}', balAmount.toFixed(2));
+  body.replaceText('{{pc.limit}}', formatCurrency(pcLimit));
+  body.replaceText('{{bal_amount}}', formatCurrency(balAmount));
   
   if (batchData.approve_datetime) {
     var approveDateStr = Utilities.formatDate(new Date(batchData.approve_datetime), "Asia/Bangkok", "dd/MM/yyyy HH:mm");
@@ -76,7 +76,7 @@ function buildSettlementPdf(batchData, validBills) {
       tableWithPlaceholder.insertTableRow(insertIdx, newRow);
       
       // We will replace both the old {{bill_table_row}} style and specific field tags if they use them
-      var netAmount = (bill.net && !isNaN(parseFloat(bill.net))) ? parseFloat(bill.net).toFixed(2) : '0.00';
+      var netAmount = (bill.net && !isNaN(parseFloat(bill.net))) ? formatCurrency(bill.net) : '0.00';
       
       newRow.replaceText('{{doc_date}}', dateStr);
       newRow.replaceText('{{tax_docno}}', String(bill.tax_docno || ''));
@@ -99,7 +99,7 @@ function buildSettlementPdf(batchData, validBills) {
         String(bill.doc_date || ''), 
         String(bill.tax_docno || ''), 
         String(bill.vend_name || ''), 
-        parseFloat(bill.net).toFixed(2), 
+        formatCurrency(bill.net), 
         String(bill.project || '')
       ]);
     });
@@ -132,7 +132,7 @@ function buildSettlementPdf(batchData, validBills) {
               img.setHeight(height * ratio);
             }
             
-            body.appendParagraph("อ้างอิง: " + (bill.vend_name || 'ไม่ระบุ') + " - " + parseFloat(bill.net).toFixed(2) + " บาท");
+            body.appendParagraph("อ้างอิง: " + (bill.vend_name || 'ไม่ระบุ') + " - " + formatCurrency(bill.net) + " บาท");
           }
         } catch (e) {
           Logger.log("Failed to insert image for bill " + bill.record_id + ": " + e.message);
@@ -178,4 +178,12 @@ function getBlobFromUrlOrDrive(url) {
     return response.getBlob();
   }
   return null;
+}
+
+function formatCurrency(amount) {
+  var val = parseFloat(amount);
+  if (isNaN(val)) val = 0;
+  var parts = val.toFixed(2).split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
 }
