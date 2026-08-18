@@ -20,6 +20,13 @@ function buildSettlementPdf(batchData, validBills) {
   body.replaceText('{{total_amount}}', batchData.total_amount.toFixed(2));
   body.replaceText('{{bill_count}}', batchData.bill_count.toString());
   
+  if (batchData.approve_datetime) {
+    var approveDateStr = Utilities.formatDate(new Date(batchData.approve_datetime), "Asia/Bangkok", "dd/MM/yyyy HH:mm");
+    body.replaceText('{{Approve_Datetime}}', approveDateStr);
+  } else {
+    body.replaceText('{{Approve_Datetime}}', '');
+  }
+  
   // Create Table Rows
   var tables = body.getTables();
   var tableWithPlaceholder = null;

@@ -10,6 +10,7 @@ const CONFIG = {
   SHEET_TAXDATA: 'TaxData',
   SHEET_USERS_PROFILE: 'users_profile',
   SHEET_PETTYCASH_BATCH: 'PettyCash_Batch',
+  SHEET_APPROVE_USERS: 'Approve_Users',
   
   // Drive Folders & Templates
   DRIVE_FOLDER_ID_BILLS: '1g6IiM2GUtwsI6vNJ2l0IMfgAjePGPGbs',

@@ -49,20 +49,12 @@ function createBatch(lineUid, recordIdList) {
     var holderName = user['Request_Name'];
     var empNo = user['emp_no'];
     
-    // Generate PDF
-    var batchData = {
-      batch_id: batchId,
-      holder_name: holderName,
-      emp_no: empNo,
-      total_amount: totalAmount,
-      bill_count: validBills.length
-    };
-    var pdfUrl = buildSettlementPdf(batchData, validBills);
+    // Generate PDF (Moved to approval step)
     
     // Write to PettyCash_Batch
     var batchSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_PETTYCASH_BATCH);
     var createDatetime = new Date();
-    // Headers: batch_id, create_datetime, holder_line_uid, holder_name, record_id_list, total_amount, pdf_url, sent_email_to, sent_datetime, approve_status
+    // Headers: batch_id, create_datetime, holder_line_uid, holder_name, record_id_list, total_amount, pdf_url, sent_email_to, sent_datetime, approve_status, Approver_name, Approve_Datetime
     batchSheet.appendRow([
       batchId, 
       createDatetime, 
@@ -70,10 +62,12 @@ function createBatch(lineUid, recordIdList) {
       holderName, 
       validBills.map(function(b) { return b['record_id']; }).join(','), 
       totalAmount, 
-      pdfUrl, 
-      CONFIG.EMAIL_ACCOUNTING, 
-      createDatetime, 
-      'Approved' // Direct approve based on new flow
+      '', // pdf_url (generated on approve)
+      '', // sent_email_to (sent on approve)
+      '', // sent_datetime
+      'pending', // Waiting for approver
+      '', // Approver_name
+      ''  // Approve_Datetime
     ]);
     
     // Update TaxData
@@ -94,12 +88,11 @@ function createBatch(lineUid, recordIdList) {
       if (approveDatetimeColIdx > 0) taxDataSheet.getRange(rowIndex, approveDatetimeColIdx).setValue(currentDateTime);
     });
     
-    // Send Email
-    sendAccountingEmail(holderName, totalAmount, validBills.length, pdfUrl);
+    // Send Email (Moved to approval step)
     
     return {
       batch_id: batchId,
-      pdf_url: pdfUrl,
+      pdf_url: '', // No PDF yet
       total_amount: totalAmount,
       excluded_records: excludedRecords
     };

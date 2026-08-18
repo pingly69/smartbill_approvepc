@@ -1,8 +1,10 @@
 function doGet(e) {
-  var template = HtmlService.createTemplateFromFile('settlement');
+  var page = (e.parameter && e.parameter.page) ? e.parameter.page : '';
+  var templateName = page === 'approve' ? 'approve' : 'settlement';
+  var template = HtmlService.createTemplateFromFile(templateName);
   template.LIFF_ID = CONFIG.LIFF_ID;
   return template.evaluate()
-    .setTitle('Petty Cash Settlement')
+    .setTitle(page === 'approve' ? 'Approve Petty Cash' : 'Petty Cash Settlement')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -22,6 +24,28 @@ function doPost(e) {
       response.data = createBatch(payload.lineUid, payload.recordIdList);
       response.success = true;
       response.message = 'Success';
+    }
+    else if (action === 'getPendingBatches') {
+      response.data = getPendingBatches(payload.lineUid);
+      response.success = true;
+      response.message = 'Success';
+    }
+    else if (action === 'getBatchDetails') {
+      response.data = getBatchDetails(payload.lineUid, payload.batchId);
+      response.success = true;
+      response.message = 'Success';
+    }
+    else if (action === 'approveBatchAction') {
+      var res = approveBatchAction(payload.lineUid, payload.batchId);
+      response.data = res;
+      response.success = res.success;
+      response.message = res.message;
+    }
+    else if (action === 'rejectBatchAction') {
+      var res = rejectBatchAction(payload.lineUid, payload.batchId);
+      response.data = res;
+      response.success = res.success;
+      response.message = res.message;
     }
   } catch (error) {
     Logger.log('Error in doPost: ' + error.message);
