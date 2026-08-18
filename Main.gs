@@ -36,7 +36,7 @@ function doPost(e) {
       response.message = 'Success';
     }
     else if (action === 'approveBatchAction') {
-      var res = approveBatchAction(payload.lineUid, payload.batchId);
+      var res = approveBatchAction(payload.lineUid, payload.batchId, payload.displayName);
       response.data = res;
       response.success = res.success;
       response.message = res.message;

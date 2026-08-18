@@ -176,6 +176,7 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLRd7vwI-qNqrzM0XkaBq6e2484U6nWMFr5lskp75M-OyiCwtG22QOW0itfsyqro5F7g/exec";
 
         let currentUserUid = null;
+        let currentUserName = null;
         let batchesData = [];
         let currentBatchId = null;
 
@@ -190,10 +191,12 @@
                     }
                     const profile = await liff.getProfile();
                     currentUserUid = profile.userId;
-                    document.getElementById('userNameDisplay').textContent = profile.displayName;
+                    currentUserName = profile.displayName;
+                    document.getElementById('userNameDisplay').textContent = currentUserName;
                 } else {
                     // Fallback for direct testing
                     currentUserUid = 'TEST_APPROVER_UID';
+                    currentUserName = 'Test Approver';
                 }
                 
                 fetchPendingBatches();
@@ -322,7 +325,7 @@
         async function processAction(actionName) {
             document.getElementById('processingOverlay').classList.remove('hidden');
             try {
-                const data = await callBackend(actionName, { lineUid: currentUserUid, batchId: currentBatchId });
+                const data = await callBackend(actionName, { lineUid: currentUserUid, displayName: currentUserName, batchId: currentBatchId });
                 document.getElementById('processingOverlay').classList.add('hidden');
                 
                 const batch = batchesData.find(b => String(b.batch_id) === String(currentBatchId));

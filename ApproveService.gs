@@ -55,10 +55,10 @@ function getBatchDetails(lineUid, batchId) {
   });
 }
 
-function approveBatchAction(lineUid, batchId) {
+function approveBatchAction(lineUid, batchId, displayName) {
   var approver = checkApproverAccess(lineUid);
   // Name could be in column B (Name, or Approver_Name, etc). Let's try some common keys or just 'Name'
-  var approverName = approver['Name'] || approver['name'] || approver['Approver_name'] || approver['ผู้ใช้อนุมัติ'] || 'Approver';
+  var approverName = displayName || approver['Name'] || approver['name'] || approver['Approver_name'] || approver['ผู้ใช้อนุมัติ'] || 'Approver';
   
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) {
