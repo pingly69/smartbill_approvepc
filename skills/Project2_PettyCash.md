@@ -42,7 +42,8 @@
 
 **สิ่งที่ Project 2 เขียนกลับไปใน Project 1:**
 - อัปเดต `TaxData.pettycash_batch_id` (คอลัมน์ V)
-- อัปเดต `TaxData.status` (คอลัมน์ T) → `approved` หรือ `rejected`
+- อัปเดต `TaxData.status` (คอลัมน์ T) → `Approved` ทันทีตั้งแต่ตอนสร้าง Batch
+- อัปเดต `TaxData.approve_userid` และ `approve_datetime` ตั้งแต่ตอนสร้าง Batch
 
 ---
 
@@ -76,12 +77,12 @@ flowchart TD
 
     R --> S[คำนวณ total_amount\nSUM Net ของที่ผ่าน]
     S --> T[สร้าง PDF\nPdfService.buildSettlementPdf]
-    T --> U[เขียน PettyCash_Batch\napprove_status = PENDING]
-    U --> V[อัปเดต TaxData\nตั้ง pettycash_batch_id ทุกแถว]
+    T --> U[เขียน PettyCash_Batch\nดึง pc.limit มาเก็บด้วย]
+    U --> V[อัปเดต TaxData\nตั้งสถานะ Approved\nใส่ batch_id, userid, datetime]
     V --> W[ส่งอีเมลบัญชี\nEmailService.sendAccountingEmail]
-    W --> X[คืนค่า batch_id\npdf_url, total_amount\nexcluded_records]
+    W --> X[คืนค่า batch_id\npdf_url, total_amount]
 
-    X --> Y[Client แสดงผลสำเร็จ\nพร้อมแจ้ง excluded ถ้ามี]
+    X --> Y[Client แสดงผลสำเร็จ\nส่งข้อความกลับเข้า LINE\nแจ้งรายละเอียดให้ผู้ขอเบิก]
     Y --> Z[แสดง Tab ประวัติ batch]
 
     style A fill:#2196F3,color:#fff
@@ -113,11 +114,8 @@ flowchart TD
     J --> L[Backend อัปเดต PettyCash_Batch\napprove_status = APPROVED\napprove_by, approve_datetime]
     K --> M[Backend อัปเดต PettyCash_Batch\napprove_status = REJECTED\nreject_reason]
 
-    L --> N[อัปเดต TaxData แถวที่เกี่ยวข้อง\nstatus = approved]
-    M --> O[อัปเดต TaxData แถวที่เกี่ยวข้อง\nstatus = rejected ถาวร]
-
-    N --> P[แสดงผล อนุมัติสำเร็จ\nจบ flow ของระบบ]
-    O --> Q[แสดงผล ปฏิเสธสำเร็จ\nบิลใน batch ปิดถาวร\nต้องบันทึกบิลใหม่ถ้าต้องการ]
+    L --> P[Client แสดงผลอนุมัติสำเร็จ\nส่งข้อความกลับเข้า LINE (LIFF)\nแจ้ง PDF ให้ผู้อนุมัติเก็บไว้]
+    M --> Q[Client แสดงผลปฏิเสธสำเร็จ\nส่งข้อความกลับเข้า LINE (LIFF)\nแจ้งการตีกลับให้ผู้อนุมัติทราบ]
 
     style A fill:#FF9800,color:#fff
     style P fill:#4CAF50,color:#fff
@@ -140,18 +138,17 @@ flowchart LR
         C1 --> E1[(PettyCash_Batch)]
     end
 
-    subgraph P2["🟧 Project 2 — Petty Cash"]
-        D1 --> F1[settlement.html\nตรวจสิทธิ์\npettycash_control=YES]
+    subgraph P2["🟧 Project 2 — Petty Cash (GitHub Pages)"]
+        D1 --> F1[index.html\nตรวจสิทธิ์\npettycash_control=YES]
         C1 --> F1
         F1 --> G1[สร้าง Batch\nPDF + Email]
         G1 --> E1
-        G1 --> H1[อัปเดต TaxData\nbatch_id filled]
+        G1 --> H1[อัปเดต TaxData\nstatus=Approved, batch_id]
         H1 --> C1
 
-        E1 --> I1[approval.html\nบัญชีอนุมัติ]
-        I1 --> J1[อัปเดต Batch\n+ TaxData status\napproved/rejected]
+        E1 --> I1[approve.html\nบัญชีอนุมัติ]
+        I1 --> J1[อัปเดต Batch\nสถานะ + เวลาอนุมัติ]
         J1 --> E1
-        J1 --> C1
     end
 
     style P1 fill:#E3F2FD
@@ -166,11 +163,11 @@ flowchart LR
 ```
 ┌────────────────────────────┐      ┌───────────────────────────────────────┐
 │  LINE LIFF Client           │      │   Google Apps Script (Web App)         │
-│  2 หน้าจอ                   │ HTTP │                                         │
-│  settlement.html            │ POST │  Main.gs  → doGet() / doPost()          │
+│  (Host บน GitHub Pages)     │ HTTP │                                         │
+│  index.html                 │ POST │  Main.gs  → doGet() / doPost()          │
 │  (ผู้ถือวงเงิน สร้าง batch) │─────▶│     ├─ Services/UserService.gs         │
 │                             │      │     ├─ Services/BillService.gs         │
-│  approval.html              │      │     ├─ Services/BatchService.gs        │
+│  approve.html               │      │     ├─ Services/BatchService.gs        │
 │  (บัญชี อนุมัติ)            │      │     ├─ Services/PdfService.gs          │
 └────────────────────────────┘      │     ├─ Services/EmailService.gs        │
                                      │     └─ Services/SheetRepo.gs           │
@@ -198,15 +195,12 @@ flowchart LR
 | `Services/EmailService.gs` | เพิ่ม `sendAccountingEmail(...)` |
 | `Services/BillService.gs` | เพิ่ม `getMyPendingBills(lineUid)` |
 
-### Frontend
+### Frontend (Hosted on GitHub Pages)
 
 | ไฟล์ | ใช้โดย | รายละเอียด |
 |---|---|---|
-| `settlement.html` | ผู้ถือวงเงิน | เลือกบิล รวม batch — ดู 8 |
-| `approval.html` | บัญชี | อนุมัติ/ไม่อนุมัติ batch — ดู 9 |
-
-> **หมายเหตุ:** `doGet` ต้องรับ query param `?page=settlement` หรือ `?page=approval` เพื่อ serve ไฟล์ที่ถูกต้อง  
-> ใช้ `HtmlService.createHtmlOutputFromFile` แยกตามพารามิเตอร์
+| `index.html` | ผู้ถือวงเงิน | เลือกบิล รวม batch, แจ้งเตือน LIFF |
+| `approve.html` | บัญชี/ผู้อนุมัติ | อนุมัติ/ไม่อนุมัติ batch, ดึงชื่อ LINE Profile อัตโนมัติ |
 
 ---
 
@@ -230,7 +224,7 @@ flowchart LR
 |---|---|
 | `Line_UID` (O) | อ่าน — ตรวจสอบว่าบิลเป็นของผู้ถือวงเงินที่ login อยู่ |
 | `req_type` (U) | อ่าน — กรองเฉพาะ `"2"` |
-| `status` (T) | อ่าน (pending) + เขียน (`approved`/`rejected` หลังบัญชีตัดสินใจ) |
+| `status` (T) | อ่าน (pending) + เขียน (`Approved` ทันทีหลังกดสร้าง Batch) |
 | `pettycash_batch_id` (V) | อ่าน (ว่าง = ยังไม่ถูกรวม) + เขียน (ตั้ง batch_id หลัง createBatch) |
 | `Net` (I) | อ่าน — ใช้คำนวณ total_amount ของ batch |
 | `Pic_bill` (L) | อ่าน — URL รูปบิล สำหรับแนบใน PDF |
@@ -242,10 +236,11 @@ flowchart LR
 
 | คอลัมน์ | Project 2 ใช้ |
 |---|---|
-| `line_uid` | ตรวจสิทธิ์ผู้เข้า settlement.html |
+| `line_uid` | ตรวจสิทธิ์ผู้เข้า index.html |
 | `pettycash_control` | `YES` = เข้าได้; `NO` = แสดงข้อความปฏิเสธ |
 | `Request_Name` | snapshot ชื่อผู้ถือใน PettyCash_Batch.holder_name |
 | `emp_no` | แสดงใน PDF |
+| `pc.limit` | วงเงินผู้อื่นเงินสด (คัดลอกลง PettyCash_Batch ตอนสร้าง) |
 
 ### 6.3 Sheet ใหม่: `PettyCash_Batch` — ต้องสร้างขึ้นใหม่ตอน deploy
 
@@ -261,9 +256,10 @@ flowchart LR
 | `sent_email_to` | String | Y | snapshot อีเมลบัญชีที่ส่งไป |
 | `sent_datetime` | Datetime | Y | เวลาส่งอีเมล (= create_datetime) |
 | `approve_status` | `PENDING`/`APPROVED`/`REJECTED` | Y | ค่าเริ่มต้น `PENDING` |
-| `approve_by` | String | N | ชื่อบัญชีที่ตัดสินใจ |
-| `approve_datetime` | Datetime | N | เวลาที่ตัดสินใจ |
+| `Approver_name` | String | N | ชื่อ LINE Profile บัญชีที่ตัดสินใจ |
+| `Approve_Datetime` | Datetime | N | เวลาที่ตัดสินใจ |
 | `reject_reason` | String | N | **บังคับ** ถ้า `approve_status = REJECTED` |
+| `pc.limit` (M) | Number | Y | วงเงินผู้อื่นเงินสด (ดึงมาจาก users_profile) |
 
 > ไม่มีฟิลด์อ้างอิงเลขที่เอกสาร ERP (จบ flow ที่สถานะ approve เท่านั้น)
 
@@ -272,7 +268,7 @@ flowchart LR
 ## 7. Business Rules (Project 2)
 
 **R4 — สิทธิ์เข้าใช้ Settlement**
-- ผู้ใช้ที่เปิด `settlement.html` ต้องมี `pettycash_control = "YES"` เท่านั้น
+- ผู้ใช้ที่เปิด `index.html` ต้องมี `pettycash_control = "YES"` เท่านั้น
 - ถ้าไม่ใช่ → แสดงข้อความปฏิเสธ
 
 **R5 — createBatch เป็น Atomic Action**
@@ -287,8 +283,9 @@ flowchart LR
 - ทุกแถวใน batch → `status = "rejected"` ถาวร ไม่นำกลับมาเลือกใหม่ได้
 - ถ้าบันทึกผิด ผู้เบิกต้องบันทึกบิลใหม่ใน Project 1
 
-**R8 — Approve ปิด Flow ทันที**
-- เมื่อ Approve → `approve_status = "APPROVED"`, TaxData ทุกแถว → `status = "approved"`
+**R8 — Approve / Reject อัปเดตเฉพาะ Batch**
+- เมื่อ Approve/Reject → อัปเดตแค่ `PettyCash_Batch` 
+- สถานะในตาราง `TaxData` ถูกเซ็ตเป็น Approved ตั้งแต่ตอนสร้างเอกสารแล้ว (ลดการ Loop เขียนข้อมูลซ้ำซ้อน)
 - จบ flow ของระบบ ไม่ติดตาม ERP ต่อ
 
 **R10 — สิทธิ์ไฟล์ Drive**
@@ -299,7 +296,7 @@ flowchart LR
 
 ---
 
-## 8. Functional Spec — Settlement (`settlement.html` + `createBatch`)
+## 8. Functional Spec — Settlement (`index.html` + `createBatch`)
 
 **UI ต้องมี:**
 - ตรวจสิทธิ์ R4 ก่อนแสดงเนื้อหา
@@ -315,14 +312,14 @@ flowchart LR
 2. สร้าง `batch_id`, ดึง `holder_name` จาก `users_profile`
 3. คำนวณ `total_amount = SUM(Net)` ของแถวที่ผ่าน
 4. เรียก `PdfService.buildSettlementPdf()` → ได้ `pdf_url`
-5. เขียนแถวใหม่ใน `PettyCash_Batch` (`approve_status = "PENDING"`)
-6. อัปเดต `TaxData`: ตั้ง `pettycash_batch_id` ทุกแถวที่เกี่ยวข้อง
+5. เขียนแถวใหม่ใน `PettyCash_Batch` (`approve_status = "PENDING"` พร้อมคัดลอก `pc.limit`)
+6. อัปเดต `TaxData`: ตั้ง `status = "Approved"`, `pettycash_batch_id`, `approve_userid`, `approve_datetime` ทุกแถวที่เกี่ยวข้อง
 7. เรียก `EmailService.sendAccountingEmail()`
 8. คืนค่า `{ batch_id, pdf_url, total_amount, excluded_records: [...] }`
 
 ---
 
-## 9. Functional Spec — Approval (`approval.html` + `approveBatch`)
+## 9. Functional Spec — Approval (`approve.html` + `approveBatchAction`)
 
 **UI:**
 - ไม่มี login พิเศษ (R6)
@@ -331,9 +328,9 @@ flowchart LR
 - ปุ่ม Approve → เรียก `approveBatch(batchId, "APPROVED", approverName)`
 - ปุ่ม Reject → บังคับกรอกเหตุผลก่อน → เรียก `approveBatch(batchId, "REJECTED", approverName, rejectReason)`
 
-**ขั้นตอน `approveBatch` (backend, ทันทีในการเรียกเดียว):**
-- อัปเดต `PettyCash_Batch`: `approve_status`, `approve_by`, `approve_datetime`, `reject_reason`
-- อัปเดต `TaxData` ทุกแถวใน `record_id_list` → `status = "approved"` หรือ `"rejected"`
+**ขั้นตอน `approveBatchAction` (backend, ทันทีในการเรียกเดียว):**
+- อัปเดต `PettyCash_Batch`: `approve_status`, `Approver_name` (ใช้ displayName จาก LINE), `Approve_Datetime`, `reject_reason`
+- คืนค่า PDF ให้ Frontend ส่งข้อความเข้า LINE (LIFF)
 
 ---
 
@@ -342,7 +339,8 @@ flowchart LR
 1. สร้าง Google Doc ต้นแบบ (Template) เก็บ ID ที่ `GOOGLE_DOC_TEMPLATE_ID`
 2. Placeholder ในรูปแบบ `{{field_name}}`:
    - `{{holder_name}}`, `{{emp_no}}`, `{{batch_id}}`, `{{create_date}}`, `{{total_amount}}`, `{{bill_count}}`
-   - ตาราง `{{bill_table_row}}` (1 แถว/บิล: วันที่ / เลขที่บิล / ผู้ขาย / ยอด Net / Project)
+   - `{{pc.limit}}` (ดึงจาก PettyCash_Batch), `{{bal_amount}}` (คำนวณ pc.limit - total_amount)
+   - ตาราง `{{bill_table_row}}` หรือ placeholder เจาะจง: `{{doc_date}}`, `{{tax_docno}}`, `{{vend_name}}`, `{{Remark}}`, `{{net}}`, `{{project}}`
 3. ขั้นตอนสร้าง PDF:
    - คัดลอก template ด้วย `DriveApp.getFileById(templateId).makeCopy()`
    - เปิดด้วย `DocumentApp` → text replace ตาม placeholder
@@ -387,11 +385,8 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> pending : Project 1: submit type2
-    pending --> in_batch : createBatch()\npettycash_batch_id ถูกตั้งค่า
-    in_batch --> approved : approveBatch(APPROVED)
-    in_batch --> rejected : approveBatch(REJECTED)\nปิดถาวร ไม่กลับสถานะ
-    approved --> [*]
-    rejected --> [*]
+    pending --> Approved : createBatch()\npettycash_batch_id + userid + datetime ถูกเซ็ต
+    Approved --> [*]
 ```
 
 ---
@@ -430,14 +425,15 @@ stateDiagram-v2
 | `{{holder_name}}` | `users_profile.Request_Name` |
 | `{{emp_no}}` | `users_profile.emp_no` |
 | `{{batch_id}}` | สร้างใหม่ใน createBatch |
-| `{{create_date}}` | วันที่สร้าง batch (GMT+7) |
-| `{{total_amount}}` | SUM Net ของ batch |
+| `{{create_date}}` | วันที่สร้าง batch จาก PettyCash_Batch.create_datetime |
+| `{{total_amount}}` | SUM Net ของ batch (Format #,##0.00) |
 | `{{bill_count}}` | จำนวนบิลใน batch |
+| `{{pc.limit}}` | วงเงินตั้งต้นจาก PettyCash_Batch (Format #,##0.00) |
+| `{{bal_amount}}` | ยอดเงินสดคงเหลือ (pc.limit - total_amount) (Format #,##0.00) |
 
 **ส่วนของตาราง (Table):**
-ระบบรองรับการแทรกข้อมูลลงในตาราง โดยจะหาแถวในตารางที่มี `{{doc_date}}`, `{{vend_name}}`, `{{tax_docno}}`, `{{net}}`, หรือ `{{bill_table_row}}` จากนั้นจะทำการ **คัดลอกทั้งแถว (Copy formatting)** แล้วแทนที่ข้อมูลในแต่ละช่อง:
-- ผู้ใช้ต้องใส่ Placeholder เหล่านี้ลงในเซลล์ของตาราง **(แทรก > ตาราง)** เช่น `{{doc_date}}` ในช่องวันที่, `{{net}}` ในช่องยอดเงิน
-- การแยกช่องทำให้สามารถควบคุม Format (เช่น ชิดขวา, ตัวหนา, ฟอนต์) แยกกันในแต่ละคอลัมน์ได้อิสระ
+ระบบรองรับการแทรกข้อมูลลงในตาราง โดยจะหาแถวในตารางที่มี `{{doc_date}}`, `{{vend_name}}`, `{{tax_docno}}`, `{{net}}`, `{{Remark}}`, `{{project}}` จากนั้นจะทำการ **คัดลอกทั้งแถว (Copy formatting)** แล้วแทนที่ข้อมูลในแต่ละช่อง:
+- ตัวเลขทางการเงินทั้งหมด (`net`, `total_amount`, `pc.limit`, `bal_amount`) จะถูก **format เป็น `#,##0.00`** จากฝั่ง Apps Script โดยอัตโนมัติ
 - **รูปภาพประกอบ (รูปบิล):** ไม่ต้องใส่ Placeholder ใดๆ ในเอกสาร สคริปต์จะจัดการขึ้นหน้าใหม่, พิมพ์หัวข้อ "เอกสารประกอบ (รูปบิล)", และวนลูปดึงรูปภาพทั้งหมดมาเรียงต่อกันให้ที่ด้านล่างสุดโดยอัตโนมัติ (รองรับหลายรูปลิงก์ที่คั่นด้วยเครื่องหมาย `,`)
 
 ---
@@ -458,10 +454,10 @@ stateDiagram-v2
 | **Google Sheet ร่วม** | `SPREADSHEET_ID` เดียวกัน — ห้ามสร้างใหม่ |
 | **ตาราง TaxData** | Project 2 อ่านแถว `req_type=2, status=pending, batch_id=empty`; เขียนกลับ col V (`pettycash_batch_id`) และ col T (`status`) |
 | **คอลัมน์ interface** | `req_type` (U) และ `pettycash_batch_id` (V) คือสัญญาระหว่าง 2 project — **ห้ามเปลี่ยนชื่อ/ลำดับ** |
-| **ชื่อคอลัมน์ Data** | การอ้างอิงคอลัมน์จาก Sheet `TaxData` อาจพบปัญหาตัวพิมพ์ใหญ่-เล็ก (เช่น `Vend_name` vs `vend_name`) Backend ต้องทำ Mapping fallback ให้ครอบคลุมทุกกรณีทั้งในส่วน UI และ PdfService เพื่อป้องกันค่า `NaN` หรือตกหล่น |
+| **ชื่อคอลัมน์ Data** | การอ้างอิงคอลัมน์จาก Sheet `TaxData` อาจพบปัญหาตัวพิมพ์ใหญ่-เล็ก (เช่น `Vend_name` vs `vend_name`) Backend ถูกปรับให้ใช้ Case-Insensitive (`.toLowerCase()`) ตลอดทั้ง Flow เพื่อป้องกันความผิดพลาด |
 | **Drive รูปบิล** | Project 2 อ่าน URL จาก `Pic_bill` เพื่อแนบใน PDF (รองรับ String คั่นด้วย comma สำหรับหลายรูป) |
-| **GAS Web App URL** | แนะนำ deploy เป็น Web App เดียว — ใช้ `action` ต่างกันผ่าน `doPost` router |
-| **ข้อตกลงสำคัญ** | Project 2 **ห้ามลบ/แก้ไข** แถวใน TaxData — ทำได้เฉพาะ อัปเดตค่าใน col T และ V เท่านั้น |
+| **GAS Web App URL** | เป็น API Backend หุ้ม logic ทั้งหมด |
+| **ข้อตกลงสำคัญ** | Project 2 (ผู้สร้าง Batch) จะเปลี่ยน `status = "Approved"` ทันที เพื่อหยุดให้รอรับอนุมัติ และบันทึก `approve_userid`, `approve_datetime` ไปเลยตั้งแต่ต้น |
 
 ---
 
