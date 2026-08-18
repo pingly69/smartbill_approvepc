@@ -11,7 +11,8 @@ function buildSettlementPdf(batchData, validBills) {
   var body = doc.getBody();
   
   // Replace Text Placeholders
-  var createDateStr = Utilities.formatDate(new Date(), "Asia/Bangkok", "dd/MM/yyyy HH:mm");
+  var createDateObj = batchData.create_datetime ? new Date(batchData.create_datetime) : new Date();
+  var createDateStr = Utilities.formatDate(createDateObj, "Asia/Bangkok", "dd/MM/yyyy HH:mm");
   
   body.replaceText('{{holder_name}}', batchData.holder_name);
   body.replaceText('{{emp_no}}', batchData.emp_no);

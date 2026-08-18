@@ -83,6 +83,7 @@ function approveBatchAction(lineUid, batchId, displayName) {
     var batchDataForPdf = {
       batch_id: batchId,
       holder_name: batchRowData['holder_name'],
+      create_datetime: batchRowData['create_datetime'],
       emp_no: '', // Not strictly needed for PDF if not available, or could fetch from users_profile
       total_amount: parseFloat(batchRowData['total_amount']),
       bill_count: validBills.length,
@@ -112,27 +113,6 @@ function approveBatchAction(lineUid, batchId, displayName) {
     if (colPdfUrl > 0) batchSheet.getRange(rowIndex, colPdfUrl).setValue(pdfUrl);
     if (colSentEmail > 0) batchSheet.getRange(rowIndex, colSentEmail).setValue(CONFIG.EMAIL_ACCOUNTING);
     if (colSentDatetime > 0) batchSheet.getRange(rowIndex, colSentDatetime).setValue(currentDatetime);
-    
-    // Update TaxData
-    var taxDataSheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_TAXDATA);
-    var taxDataRows = getSheetDataAsObjects(CONFIG.SHEET_TAXDATA);
-    var taxHeaders = taxDataSheet.getRange(1, 1, 1, taxDataSheet.getLastColumn()).getValues()[0];
-    var lowerTaxHeaders = taxHeaders.map(function(h) { return String(h).toLowerCase().trim(); });
-    
-    var taxStatusColIdx = lowerTaxHeaders.indexOf('status') + 1;
-    var taxApproveUserIdColIdx = lowerTaxHeaders.indexOf('approve_userid') + 1;
-    var taxApproveDatetimeColIdx = lowerTaxHeaders.indexOf('approve_datetime') + 1;
-    
-    var taxBillsToUpdate = taxDataRows.filter(function(row) {
-      return String(row['pettycash_batch_id']) === String(batchId);
-    });
-    
-    taxBillsToUpdate.forEach(function(billRow) {
-      var rIdx = billRow._rowIndex;
-      if (taxStatusColIdx > 0) taxDataSheet.getRange(rIdx, taxStatusColIdx).setValue('Approved');
-      if (taxApproveUserIdColIdx > 0) taxDataSheet.getRange(rIdx, taxApproveUserIdColIdx).setValue(lineUid);
-      if (taxApproveDatetimeColIdx > 0) taxDataSheet.getRange(rIdx, taxApproveDatetimeColIdx).setValue(currentDatetime);
-    });
     
     // Send Email
     sendAccountingEmail(batchRowData['holder_name'], parseFloat(batchRowData['total_amount']), validBills.length, pdfUrl);
