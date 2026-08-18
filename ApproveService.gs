@@ -49,7 +49,8 @@ function getBatchDetails(lineUid, batchId) {
       net: bill['Net'] || bill['net'] || 0,
       pic_bill: bill['Pic_bill'] || bill['pic_bill'] || '',
       project: bill['Project'] || bill['project'] || '',
-      tax_docno: bill['Tax_docno'] || bill['tax_docno'] || ''
+      tax_docno: bill['Tax_docno'] || bill['tax_docno'] || '',
+      remark: bill['Remark'] || bill['remark'] || ''
     };
   });
 }
